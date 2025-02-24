@@ -1,111 +1,75 @@
-// src/App.js
 import { useState } from "react";
+import axios from "axios";
 
-function App() {
-  const [user, setUser] = useState("");
-  const [targetDir, setTargetDir] = useState("");
-  const [message, setMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+const App = () => {
+  const [username, setUsername] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const handleUsernameChange = (e) => {
+    setUsername(e.target.value);
+  };
 
-    if (!user || !targetDir) {
-      setMessage("Por favor, preencha todos os campos.");
+  const handleSubmit = async () => {
+    if (!username) {
+      setError("Please enter a GitHub username.");
       return;
     }
 
-    setIsLoading(true);
-    setMessage("");
+    setError("");
+    setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3000/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user, targetDir }),
-      });
+      // Sending the username to the backend
+      const response = await axios.post(
+        "http://localhost:3000",
+        { user: username },
+        { responseType: "blob" }
+      );
 
-      const data = await response.json();
+      // Create a temporary link and trigger the download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.setAttribute("download", `${username}_repos.zip`); // Name of the file to download
+      document.body.appendChild(a);
+      a.click();
 
-      if (response.ok) {
-        setMessage(data.message || "Repositórios clonados com sucesso!");
-      } else {
-        setMessage(data.error || "Erro desconhecido.");
-      }
-    } catch (error) {
-      setMessage("Erro ao se comunicar com o servidor.");
-      console.log(error);
-    } finally {
-      setIsLoading(false);
+      // Reset loading state
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+      setError("Error downloading repositories.");
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md bg-white p-6 rounded-lg shadow-lg">
-        <h1 className="text-2xl font-semibold text-center text-gray-800 mb-6">
-          Clone All Your GitHub Repos
+    <div className="flex items-center justify-center h-screen bg-gray-100">
+      <div className="bg-white p-6 rounded-lg shadow-md w-96">
+        <h1 className="text-2xl font-bold mb-4">
+          GitHub Repositories Downloader
         </h1>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label
-              htmlFor="user"
-              className="block text-sm font-medium text-gray-700"
-            >
-              GitHub Username
-            </label>
-            <input
-              type="text"
-              id="user"
-              className="w-full p-3 mt-2 border border-gray-300 rounded-lg"
-              value={user}
-              onChange={(e) => setUser(e.target.value)}
-              placeholder="Enter GitHub username"
-            />
-          </div>
-
-          <div className="mb-6">
-            <label
-              htmlFor="targetDir"
-              className="block text-sm font-medium text-gray-700"
-            >
-              Target Directory (Absolute Path)
-            </label>
-            <input
-              type="text"
-              id="targetDir"
-              className="w-full p-3 mt-2 border border-gray-300 rounded-lg"
-              value={targetDir}
-              onChange={(e) => setTargetDir(e.target.value)}
-              placeholder="Absolute Path E.g C:\Downloads"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className={`w-full p-3 bg-blue-500 text-white font-semibold rounded-lg ${
-              isLoading && "opacity-50 cursor-not-allowed"
-            }`}
-            disabled={isLoading}
-          >
-            {isLoading ? "Clonando..." : "Clone Repositories"}
-          </button>
-        </form>
-
-        {message && (
-          <div
-            className={`mt-4 text-center text-sm ${
-              message.includes("erro") ? "text-red-500" : "text-green-500"
-            }`}
-          >
-            {message}
-          </div>
-        )}
+        <input
+          type="text"
+          value={username}
+          onChange={handleUsernameChange}
+          placeholder="Enter GitHub username"
+          className="w-full p-3 border border-gray-300 rounded mb-4"
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className={`w-full p-3 text-white rounded ${
+            loading ? "bg-gray-500" : "bg-blue-500"
+          } hover:bg-blue-600`}
+        >
+          {loading ? "Cloning..." : "Download Repos as ZIP"}
+        </button>
+        {error && <p className="text-red-500 mt-4">{error}</p>}
       </div>
     </div>
   );
-}
+};
 
 export default App;
